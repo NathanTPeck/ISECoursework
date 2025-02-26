@@ -28,22 +28,23 @@ if torch.cuda.is_available():
     device = torch.device("cuda")
 print(f"Device: {torch.cuda.get_device_name()}")
 
-# Change the below to alter the hyperparameters
-LR = 1.5e-3
+# Todo 1 Change the below to alter the hyperparameters
+LR = 1.3e-3
 BATCH_SIZE = 50
-DROPOUT = 0.34
-MAX_DOC_LEN = 75
+DROPOUT = 0.071
+MAX_DOC_LEN = 73
 TEST_SIZE = 0.2
 MAX_VOCAB = 10000
 HIDDEN_SIZE = []
 POOL_SIZE = 2
 FILTER_SIZES = [3, 4]
-N_FILTERS = [512, 256]
-NUM_EPOCHS = 25
+N_FILTERS = [249, 127]
+NUM_EPOCHS = 21
+EMBEDDING_TYPE = 1
 FREEZE_EMBEDDINGS = False
-THRESHOLD = 0.106
-# Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet', 'caffe')
-project = 'pytorch'
+THRESHOLD = 0.2
+# Todo all: Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet')
+project = 'keras'
 num_iters = 10
 
 
@@ -106,9 +107,6 @@ def initilize_model(
         freeze_embedding=False,
         vocab_size=None
 ):
-    """Instantiate a CNN model and an optimizer."""
-
-    # Instantiate CNN model
     cnn_model = CNN(embed_dim,
                     n_filters,
                     filter_sizes,
@@ -177,7 +175,8 @@ def train_model(model, optimiser, train_dataloader, test_dataloader=None, epochs
                       f" {time_elapsed: ^ 9.2f}")
 
     T = time.time() - t0
-    print(f"total time taken: {T}")
+    if verbose:
+        print(f"total time taken: {T}")
 
     if best_model_state is not None and last:
         # Loading best model from training epochs
@@ -186,7 +185,8 @@ def train_model(model, optimiser, train_dataloader, test_dataloader=None, epochs
     if test_dataloader is not None:
         _, accuracy, y_preds, y_true, y_probs = evaluate(model, test_dataloader, threshold=threshold)
 
-        precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_preds, average='binary', zero_division=0)
+        # Todo 1: change average= to macro for mean average across both classes
+        precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_preds, average='macro', zero_division=0)
         fpr, tpr, thresholds = roc_curve(y_true, y_probs)
         auc_score = auc(fpr, tpr)
         if verbose:
@@ -249,30 +249,31 @@ def evaluate(model, test_dataloader, threshold=None):
 
 
 def classify_input(model, text, word2idx, max_len):
-    """Classifies a single input text using the trained model."""
-    model.eval()  # Set model to evaluation mode
+    model.eval()
 
-    # Preprocess input text
+
     text = pp.clean_str(text)
-    # Todo: uncommment below to enable stopword removal in the custom input classification
+    # Todo 2: uncommment below to enable stopword removal in the custom input classification
     # text = pp.remove_stopwords(text)
 
-    # Tokenize and encode
-    # Todo: Set preprocess to "stem" or "lemmatize" or leave as "" for per word preprocessing
+    # Todo 2: Set preprocess to "stem" or "lemmatize" or leave as "" for per word preprocessing
     tokenized_text, _, _ = pp.tokenize_words([text], preprocess="")
-    input_id = pp.pad_and_encode(tokenized_text, word2idx, min(max_len, MAX_DOC_LEN))
+    input = pp.pad_and_encode(tokenized_text, word2idx, min(max_len, MAX_DOC_LEN))
 
-    # Convert to tensor
-    input_tensor = torch.tensor(input_id, dtype=torch.long).to(device)
+    input_tensor = torch.tensor(input, dtype=torch.long).to(device)
 
     with torch.no_grad():
         logits = model(input_tensor)
 
-    # Convert logits to probabilities
-    probs = torch.softmax(logits, dim=1)
-    predicted_label = torch.argmax(probs, dim=1).item()
+    probability = torch.softmax(logits, dim=1)
+    if THRESHOLD is None:
+        prediction = torch.argmax(probability, dim=1).item()
+    else:
+        prediction = (probability[:, 1] > THRESHOLD).long().item()
 
-    return predicted_label, probs.cpu().numpy()
+    prob_tuple = tuple(probability.cpu().numpy()[0])
+
+    return prediction, prob_tuple
 
 
 print("Processing dataset headers...")
@@ -283,13 +284,14 @@ text_col = "text"
 labels = data["sentiment"].values
 
 print("Preprocessing data...")
+# Todo 1: comment out the line below to remove string cleaning (also used for lowercasing, but not enabled by default)
 data[text_col] = data[text_col].apply(pp.clean_str)
-# Todo: uncomment the below code to enable stopword removal
+# Todo 1: uncomment the 2 lines below to enable stopword removal
 # nltk.download('stopwords', quiet=True)
 # data[text_col] = data[text_col].apply(pp.remove_stopwords)
 
 print("Tokenizing words...")
-# Todo: Set preprocess to "stem" or "lemmatize" or leave as "" for per word preprocessing
+# Todo 1: Set preprocess to "stem" or "lemmatize" or leave as "" for per word preprocessing
 tokenized_texts, word2idx, max_len = pp.tokenize_words(data[text_col], preprocess="")
 
 input_ids = pp.pad_and_encode(tokenized_texts, word2idx, min(max_len, MAX_DOC_LEN))
@@ -358,6 +360,7 @@ def benchmark_models():
 
     df_log.to_csv(out_csv_name, mode='a', header=header_needed, index=False)
     print(f"\nResults have been saved to: {out_csv_name}")
+    return cnn_model
 
 
 def objective(config):
@@ -394,7 +397,7 @@ def short_dirname(trial):
 
 
 def define_search_space(trial: optuna.Trial):
-    # Todo: change the following hyperparameters as you like
+    # Todo 3: change the following hyperparameters as you like
     trial.suggest_float("lr", 1e-4, 5e-3, log=True)
     trial.suggest_float("dropout", 0.05, 0.5)
     trial.suggest_categorical("filter_sizes", [[2, 3], [2, 4], [3, 4]])
@@ -411,7 +414,7 @@ def tune_hyperparameters():
     scheduler = ASHAScheduler(
         metric="accuracy",
         mode="max",
-        # Todo Ensure max_t is equal to the max epochs tested
+        # Todo 3: Ensure max_t is equal to the max epochs tested
         max_t=40,
         grace_period=10,
         reduction_factor=2
@@ -421,29 +424,39 @@ def tune_hyperparameters():
         objective,
         tune_config=tune.TuneConfig(
             trial_dirname_creator=short_dirname,
-            # Todo: adjust to computational potential
-            num_samples=50,
+            # Todo 3: adjust to computational potential
+            num_samples=5,
             search_alg=algo,
             scheduler=scheduler
         ),
         run_config=train.RunConfig(
             checkpoint_config=air.CheckpointConfig(checkpoint_frequency=0),
-            # Todo: adjust to wherever you like
-            storage_path="C:\\University\\Assessments\\ISELabs\\results\\RayTuner",
+            # Todo 3: adjust to wherever you like
+            storage_path="ISECoursework\\results\\RayTuner",
         ),
     )
 
     results = tuner.fit()
     print("Best config is:", results.get_best_result(metric="accuracy", mode="max").config)
 
-# Todo: Comment out if tuning hyperparameters
-benchmark_models()
 
-# Todo: Uncomment to tune hyperparameters
+# Todo 1: Comment out if tuning hyperparameters
+cnn_model = benchmark_models()
+
+# Todo 3: Uncomment to tune hyperparameters
 # tune_hyperparameters()
 
-# Todo: uncomment below code to test your own text input for the model to classify (note: this is unstable with very small inputs)
-# user_input = input("Enter a bug report to classify:\n")
-# label, probabilities = classify_input(cnn_model, user_input, word2idx, max_len)
-# print(f"Predicted Label: {label}")
-# print(f"Probabilities: {probabilities}")
+
+def user_input_prediction(model):
+    while True:
+        user_input = input("Enter a bug report to classify:\n")
+        if user_input == "quit":
+            break
+        label, probabilities = classify_input(model, user_input, word2idx, max_len)
+        print(f"Predicted Label: {label}")
+        print(f"Probabilities: {probabilities}")
+
+
+# Todo 2: uncomment below code to test your own text input for the model to classify
+#  (note: this is unstable with very small inputs)
+# user_input_prediction(cnn_model)

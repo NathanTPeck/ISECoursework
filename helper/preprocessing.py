@@ -50,7 +50,7 @@ def clean_str(string):
     string = re.sub(r"\\", "", string)
     string = re.sub(r"\'", "", string)
     string = re.sub(r"\"", "", string)
-    # Todo: add `.lower()` to the code below to convert words to lowercase
+    # Todo 1: add `.lower()` to the code below to convert words to lowercase
     return string.strip()
 
 
@@ -93,7 +93,7 @@ def pad_and_encode(tokenized_texts, word2idx, max_len):
         else:
             tokenized_sentence = tokenized_sentence[:max_len]
 
-        input_id = [word2idx.get(token) for token in tokenized_sentence]
+        input_id = [word2idx.get(token, word2idx.get('<unk', 0)) for token in tokenized_sentence]
         input_ids.append(input_id)
 
     return np.array(input_ids)

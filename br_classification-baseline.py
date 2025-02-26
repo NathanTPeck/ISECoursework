@@ -4,8 +4,6 @@ import time
 import pandas as pd
 import numpy as np
 import re
-import math
-import matplotlib.pyplot as plt
 
 from nltk.tokenize import word_tokenize
 # Text and feature engineering
@@ -79,7 +77,7 @@ def clean_str(string):
 import os
 import subprocess
 
-# Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet', 'caffe')
+# Todo: Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet', 'caffe')
 project = 'incubator-mxnet'
 path = f'./datasets/{project}.csv'
 
@@ -108,7 +106,7 @@ pd_tplusb.to_csv('Title+Body.csv', index=False, columns=["id", "Number", "sentim
 datafile = 'Title+Body.csv'
 
 # 2) Number of repeated experiments
-REPEAT = 3
+REPEAT = 10
 
 # 3) Output CSV file name
 out_csv_name = f'./results/{project}_NB.csv'
@@ -189,14 +187,17 @@ for repeated_time in range(REPEAT):
     accuracies.append(acc)
 
     # Precision (macro)
+    # Todo Change average to binary if required
     prec = precision_score(y_test, y_pred, average='macro')
     precisions.append(prec)
 
     # Recall (macro)
+    # Todo Chang eaverage to binary if required
     rec = recall_score(y_test, y_pred, average='macro')
     recalls.append(rec)
 
     # F1 Score (macro)
+    # Todo Change average to binary if required
     f1 = f1_score(y_test, y_pred, average='macro')
     f1_scores.append(f1)
 
@@ -206,15 +207,6 @@ for repeated_time in range(REPEAT):
     fpr, tpr, _ = roc_curve(y_test, y_pred, pos_label=1)
 
     auc_val = auc(fpr, tpr)
-    # plt.figure(figsize=(6, 6))
-    # plt.plot(fpr, tpr, color='blue', lw=2,
-    #          label=f'ROC curve (AUC = {auc_val: .2f})')
-    # plt.plot([0, 1], [0, 1], color='grey', linestyle='--')  # Random classifier line
-    # plt.xlabel('False Positive Rate')
-    # plt.ylabel('True Positive Rate')
-    # plt.title('Receiver Operating Characteristic (ROC) Curve')
-    # plt.legend(loc='lower right')
-    # plt.show()
     auc_values.append(auc_val)
 
 
