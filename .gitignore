@@ -1,3 +1,4 @@
 .idea
 __pycache__
 /results/RayTuner
+embeddings/crawl-300d-2M.vec
