@@ -1,5 +1,7 @@
 .idea
 __pycache__
 /results/RayTuner
-embeddings/crawl-300d-2M.vec
+embeddings/*
 Title+Body.csv
+datasets/*
+br_classification-baseline.py
