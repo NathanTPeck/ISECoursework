@@ -186,7 +186,7 @@ def train_model(model, optimiser, train_dataloader, test_dataloader=None, epochs
         _, accuracy, y_preds, y_true, y_probs = evaluate(model, test_dataloader, threshold=threshold)
 
         # Todo 1: change average= to macro for mean average across both classes
-        precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_preds, average='macro', zero_division=0)
+        precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_preds, average='binary', zero_division=0)
         fpr, tpr, thresholds = roc_curve(y_true, y_probs)
         auc_score = auc(fpr, tpr)
         if verbose:
@@ -344,6 +344,8 @@ def benchmark_models():
     print(f"Recall:     {final_recall:.4f}")
     print(f"F1-Score:   {final_f1:.4f}")
     print(f"AUC:        {final_auc:.4f}")
+
+    print(f"proposed_results_array = {[accuracies, precisions, recalls, f1s, roc_aucs]}")
 
     header_needed = not os.path.isfile(out_csv_name)
 
