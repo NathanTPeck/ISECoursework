@@ -406,23 +406,12 @@ def define_search_space(trial: optuna.Trial):
     trial.suggest_int("num_filters_1", 64, 512)
     trial.suggest_int("num_filters_2", 64, 512)
     trial.suggest_int("epochs", 10, 40)
-    # trial.suggest_categorical("hidden_size", [[], [256], [128], [64], [256, 128], [256, 64], [128, 64]])
-    trial.suggest_categorical("hidden_size", [[]])
-    # trial.suggest_float("threshold", 0.05, 0.5)
-    trial.suggest_categorical("threshold", [None])
+    trial.suggest_categorical("hidden_size", [[], [256], [128], [64], [256, 128], [256, 64], [128, 64]])
+    trial.suggest_float("threshold", 0.05, 0.5)
 
 
 def tune_hyperparameters():
-    algo = OptunaSearch(define_search_space, metric="accuracy", mode="max", sampler=TPESampler())
-
-    scheduler = ASHAScheduler(
-        metric="accuracy",
-        mode="max",
-        # Todo 3: Ensure max_t is equal to the max epochs tested
-        max_t=40,
-        grace_period=10,
-        reduction_factor=2
-    )
+    algo = OptunaSearch(define_search_space, metric="f1", mode="max", sampler=TPESampler())
 
     tuner = tune.Tuner(
         objective,
@@ -431,7 +420,6 @@ def tune_hyperparameters():
             # Todo 3: adjust to computational potential
             num_samples=500,
             search_alg=algo,
-            # scheduler=scheduler
         ),
         run_config=train.RunConfig(
             checkpoint_config=air.CheckpointConfig(checkpoint_frequency=0),
