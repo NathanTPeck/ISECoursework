@@ -29,22 +29,22 @@ if torch.cuda.is_available():
 print(f"Device: {torch.cuda.get_device_name()}")
 
 # Todo 1 Change the below to alter the hyperparameters
-LR = 1.3e-3
+LR = 1e-3
 BATCH_SIZE = 50
-DROPOUT = 0.071
-MAX_DOC_LEN = 73
+DROPOUT = 0.5
+MAX_DOC_LEN = 1000
 TEST_SIZE = 0.2
 MAX_VOCAB = 10000
 HIDDEN_SIZE = []
 POOL_SIZE = 2
 FILTER_SIZES = [3, 4]
-N_FILTERS = [249, 127]
-NUM_EPOCHS = 21
+N_FILTERS = [128, 128]
+NUM_EPOCHS = 20
 EMBEDDING_TYPE = 1
 FREEZE_EMBEDDINGS = False
-THRESHOLD = 0.2
+THRESHOLD = None
 # Todo all: Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet')
-project = 'keras'
+project = 'pytorch'
 num_iters = 10
 
 
@@ -301,7 +301,7 @@ embeddings = torch.tensor(embeddings, dtype=torch.float32)
 EMBEDDING_DIM = 300
 
 
-initial_embeddings = embeddings
+initial_embeddings = copy.deepcopy(embeddings)
 loss_fn = nn.CrossEntropyLoss()
 
 
@@ -315,10 +315,10 @@ def benchmark_models():
     roc_aucs = []
 
     for i in range(num_iters):
-        X_train, X_test, y_train, y_test = train_test_split(input_ids, labels, test_size=TEST_SIZE, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(input_ids, labels, test_size=TEST_SIZE, random_state=i)
         train_dataloader, test_dataloader = dl.data_loader(X_train, X_test, y_train, y_test, batch_size=BATCH_SIZE)
 
-        embeddings = initial_embeddings
+        embeddings = copy.deepcopy(initial_embeddings)
         cnn_model, optimiser = initilize_model(EMBEDDING_DIM, FILTER_SIZES, N_FILTERS, DROPOUT, LR, POOL_SIZE,
                                                HIDDEN_SIZE, pretrained_embedding=embeddings, vocab_size=MAX_VOCAB,
                                                freeze_embedding=FREEZE_EMBEDDINGS)
@@ -366,7 +366,7 @@ def benchmark_models():
 
 
 def objective(config):
-    X_train, X_test, y_train, y_test = train_test_split(input_ids, labels, test_size=TEST_SIZE, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(input_ids, labels, test_size=TEST_SIZE)
     train_dataloader, test_dataloader = dl.data_loader(X_train, X_test, y_train, y_test, batch_size=BATCH_SIZE)
 
     embeddings = initial_embeddings
@@ -402,12 +402,14 @@ def define_search_space(trial: optuna.Trial):
     # Todo 3: change the following hyperparameters as you like
     trial.suggest_float("lr", 1e-4, 5e-3, log=True)
     trial.suggest_float("dropout", 0.05, 0.5)
-    trial.suggest_categorical("filter_sizes", [[2, 3], [2, 4], [3, 4]])
+    trial.suggest_categorical("filter_sizes", [[2], [3], [2, 3], [2, 4], [3, 4]])
     trial.suggest_int("num_filters_1", 64, 512)
     trial.suggest_int("num_filters_2", 64, 512)
     trial.suggest_int("epochs", 10, 40)
-    trial.suggest_categorical("hidden_size", [[], [256], [128], [64], [256, 128], [256, 64], [128, 64]])
-    trial.suggest_float("threshold", 0.05, 0.5)
+    # trial.suggest_categorical("hidden_size", [[], [256], [128], [64], [256, 128], [256, 64], [128, 64]])
+    trial.suggest_categorical("hidden_size", [[]])
+    # trial.suggest_float("threshold", 0.05, 0.5)
+    trial.suggest_categorical("threshold", [None])
 
 
 def tune_hyperparameters():
@@ -427,14 +429,14 @@ def tune_hyperparameters():
         tune_config=tune.TuneConfig(
             trial_dirname_creator=short_dirname,
             # Todo 3: adjust to computational potential
-            num_samples=5,
+            num_samples=500,
             search_alg=algo,
-            scheduler=scheduler
+            # scheduler=scheduler
         ),
         run_config=train.RunConfig(
             checkpoint_config=air.CheckpointConfig(checkpoint_frequency=0),
             # Todo 3: adjust to wherever you like
-            storage_path="ISECoursework\\results\\RayTuner",
+            storage_path="C:\\University\\Assessments\\ISECoursework\\results\\RayTuner",
         ),
     )
 

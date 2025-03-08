@@ -78,7 +78,7 @@ import os
 import subprocess
 
 # Todo: Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet', 'caffe')
-project = 'keras'
+project = 'pytorch'
 path = f'./datasets/{project}.csv'
 
 pd_all = pd.read_csv(path)
@@ -190,17 +190,17 @@ for repeated_time in range(REPEAT):
 
     # Precision (macro)
     # Todo Change average to binary if required
-    prec = precision_score(y_test, y_pred, average='binary')
+    prec = precision_score(y_test, y_pred, average='macro')
     precisions.append(prec)
 
     # Recall (macro)
     # Todo Chang eaverage to binary if required
-    rec = recall_score(y_test, y_pred, average='binary')
+    rec = recall_score(y_test, y_pred, average='macro')
     recalls.append(rec)
 
     # F1 Score (macro)
     # Todo Change average to binary if required
-    f1 = f1_score(y_test, y_pred, average='binary')
+    f1 = f1_score(y_test, y_pred, average='macro')
     f1_scores.append(f1)
 
     # AUC
